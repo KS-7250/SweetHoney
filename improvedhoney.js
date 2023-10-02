@@ -2,6 +2,7 @@
 // (as well as nodejs if not run on server)
 const net = require('net');
 const fs = require('fs');
+const readline = require('readline');
 
 // TODO: ask user for which port the honeypot should listen on, 22 is ssh
 const PORT = 22;
@@ -11,20 +12,32 @@ const LOG_FILE = 'honeylog.txt';
 // use OS detection to select correct banner from file
 const CUSTOM_BANNER = '';
 
-const WHITELIST_FILE = 'whitelist.txt';
-const BLACKLIST_FILE = 'blacklist.txt';
+const WHITELIST_FILE = 'Resources/whitelist.txt';
+const BLACKLIST_FILE = 'Resources/blacklist.txt';
 
-const whitelistedIPs = loadIPList(WHITELIST_FILE);
-const blacklistedIPs = loadIPList(BLACKLIST_FILE);
+//const whitelistedIPs = loadIPList(WHITELIST_FILE);
+//const blacklistedIPs = loadIPList(BLACKLIST_FILE);
 
-async function loadSSHBanner(path) {
-  const file = fs.readFile(path, 'utf8', (error, data) => {
-    if(error) {
-      console.error(`Error loading SSH Banner list from ${path}: ${error.message}`);
-      return;
-    }
-    console.log(JSON.parse(data));
+const bannerMap = new Map();
+
+async function lazyReadBanner(path) {
+
+  try {
+    const fileStream = fs.createReadStream(path);
+  } catch(error) {
+    console.error(`Error opening file in path: ${path}. ${error}`);
+  }
+
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity
   });
+
+  for await (const line of rl) {
+    arr = line.split('  ');
+    bannerMap.set(arr[0], arr[1]);
+  }
+
 }
 
 const server = net.createServer((socket) => {
@@ -36,7 +49,7 @@ const server = net.createServer((socket) => {
   
   socket.write(CUSTOM_BANNER);
 
-  // check if ip is in blacklist/whitelist
+  /* check if ip is in blacklist/whitelist
   if (whitelistedIPs.length > 0 && !whitelistedIPs.includes(remoteAddress)) {
     console.log(`Whitelisted IP check: Connection from ${remoteAddress} is not whitelisted.`);
     socket.end();
@@ -48,6 +61,7 @@ const server = net.createServer((socket) => {
     socket.end();
     return;
   }
+  */
 
   //const test = socket.process.platform
 
@@ -89,9 +103,9 @@ const server = net.createServer((socket) => {
 
 function logAttackerDetails(protocol, ip, port, sshVersion) {
   const logEntry = `Attacker connected from ${protocol} ${ip}:${port}  SSH: ${sshVersion}\n`;
-  fs.appendFile(LOG_FILE, logEntry, (err) => {
-    if (err) {
-      console.error(`Error writing details to ${LOG_FILE}: ${err}`);
+  fs.appendFile(LOG_FILE, logEntry, (error) => {
+    if (error) {
+      console.error(`Error writing details to ${LOG_FILE}: ${error}`);
     }
   });
 }
