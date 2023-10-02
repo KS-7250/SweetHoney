@@ -17,15 +17,14 @@ const BLACKLIST_FILE = 'blacklist.txt';
 const whitelistedIPs = loadIPList(WHITELIST_FILE);
 const blacklistedIPs = loadIPList(BLACKLIST_FILE);
 
-// TODO: customize filepath for use on jumpboxes/server manager
-function loadIPList(filePath) {
-  try {
-    const data = fs.readFileSync(filePath, 'utf8');
-    return data.split('\n').map((ip) => ip.trim()).filter(Boolean);
-  } catch (error) {
-    console.error(`Error loading IP list from ${filePath}: ${error.message}`);
-    return [];
-  }
+async function loadSSHBanner(path) {
+  const file = fs.readFile(path, 'utf8', (error, data) => {
+    if(error) {
+      console.error(`Error loading SSH Banner list from ${path}: ${error.message}`);
+      return;
+    }
+    console.log(JSON.parse(data));
+  });
 }
 
 const server = net.createServer((socket) => {
