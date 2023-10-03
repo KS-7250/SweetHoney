@@ -3,6 +3,7 @@
 const net = require('net');
 const fs = require('fs');
 const readline = require('readline');
+const { Client } = require('@elastic/elasticsearch');
 
 // TODO: ask user for which port the honeypot should listen on, 22 is ssh
 const PORT = 22;
@@ -39,6 +40,8 @@ async function lazyReadBanner(path) {
   }
 
 }
+
+const client = new Client({node: 'http://localhost:9200'}); // change to whatever IP or link elasticsearch server is hosted on
 
 const server = net.createServer((socket) => {
 
@@ -103,6 +106,15 @@ const server = net.createServer((socket) => {
 
 function logAttackerDetails(protocol, ip, port, sshVersion) {
   const logEntry = `Attacker connected from ${protocol} ${ip}:${port}  SSH: ${sshVersion}\n`;
+
+  client.index({
+    index: 'Attackers',
+    body: {
+      title: 'Bandit',
+      content: logEntry
+    }
+  });
+
   fs.appendFile(LOG_FILE, logEntry, (error) => {
     if (error) {
       console.error(`Error writing details to ${LOG_FILE}: ${error}`);
